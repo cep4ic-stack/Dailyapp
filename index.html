@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<meta name="theme-color" content="#0d0f14"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<title>Ежедневник</title>
+<style>
+:root{
+  --bg:#0d0f14;--surface:#151820;--card:#1c2030;--border:#242840;
+  --accent:#7c6dfa;--accentL:#a99dfc;--gold:#e8c96a;--green:#4ecb8d;
+  --red:#e05252;--orange:#e0994a;--text:#e8eaf0;--muted:#7a8099;
+  --rub:#6dd4a0;
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+  --safe-top:env(safe-area-inset-top,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Inter','Segoe UI',system-ui,sans-serif;overscroll-behavior:none;}
+#app{display:flex;flex-direction:column;height:100dvh;max-width:520px;margin:0 auto;}
+#content{flex:1;overflow-y:auto;padding:14px 13px calc(14px + var(--safe-bottom));}
+#content::-webkit-scrollbar{display:none;}
+
+/* HEADER */
+#header{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 14px 0;flex-shrink:0;padding-top:calc(10px + var(--safe-top));}
+.header-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.logo{font-size:10px;font-weight:800;letter-spacing:4px;color:var(--accentL);}
+.header-right{display:flex;align-items:center;gap:6px;}
+.gear-btn{background:none;border:none;font-size:20px;cursor:pointer;padding:4px;color:var(--muted);line-height:1;}
+.stat-row{display:flex;gap:5px;}
+.stat-chip{display:flex;flex-direction:column;align-items:center;background:var(--card);border-radius:8px;padding:4px 7px;}
+.stat-val{font-size:12px;font-weight:700;line-height:1.2;}
+.stat-lbl{font-size:7px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;}
+.level-row{display:flex;align-items:center;gap:8px;margin-bottom:3px;}
+.level-name{font-size:10px;font-weight:700;color:var(--gold);white-space:nowrap;}
+.level-bar-bg{flex:1;height:3px;background:var(--border);border-radius:2px;overflow:hidden;}
+.level-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--gold));border-radius:2px;transition:width .6s;}
+.level-next{font-size:9px;color:var(--muted);white-space:nowrap;}
+.level-perk{font-size:9px;color:var(--muted);margin-bottom:8px;}
+
+/* BOTTOM NAV */
+#bottom-nav{background:var(--surface);border-top:1px solid var(--border);display:flex;padding-bottom:var(--safe-bottom);flex-shrink:0;}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 2px 6px;background:none;border:none;color:var(--muted);font-size:7px;letter-spacing:.3px;text-transform:uppercase;cursor:pointer;gap:2px;position:relative;}
+.nav-btn.active{color:var(--accentL);}
+.nav-btn.active::after{content:'';position:absolute;top:0;left:10%;right:10%;height:2px;background:var(--accent);border-radius:0 0 2px 2px;}
+.nav-icon{font-size:18px;line-height:1;}
+
+/* TOAST */
+#toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-80px);padding:10px 18px;border-radius:10px;color:#fff;font-size:13px;font-weight:600;z-index:999;box-shadow:0 4px 24px rgba(0,0,0,.5);transition:transform .3s;white-space:nowrap;max-width:92vw;text-align:center;}
+#toast.show{transform:translateX(-50%) translateY(0);}
+#toast.ok{background:#1e6b3e;}#toast.warn{background:#7a4a10;}#toast.err{background:#7a1a1a;}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;display:flex;align-items:flex-end;justify-content:center;}
+.modal-box{background:var(--surface);border-radius:18px 18px 0 0;padding:20px 16px calc(20px + var(--safe-bottom));width:100%;max-width:520px;max-height:92dvh;overflow-y:auto;}
+.modal-box::-webkit-scrollbar{display:none;}
+.modal-title{font-size:15px;font-weight:700;margin-bottom:14px;}
+.modal-close{float:right;background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1;margin-top:-2px;}
+
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px;margin-bottom:9px;}
+.card.green{border-color:var(--green);background:rgba(78,203,141,.07);}
+.card.warn{border-color:var(--orange);background:rgba(224,153,74,.08);}
+.card.rub{border-color:var(--rub);background:rgba(109,212,160,.07);}
+.card.red{border-color:var(--red);background:rgba(224,82,82,.07);}
+.section-label{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:9px;}
+.empty{text-align:center;padding:40px 20px;}
+.empty-icon{font-size:32px;margin-bottom:10px;color:var(--accent);}
+.empty-text{color:var(--muted);font-size:13px;margin-bottom:18px;line-height:1.5;}
+
+/* TASKS */
+.task-btn{display:flex;align-items:center;gap:10px;width:100%;background:var(--card);border:1px solid var(--border);border-radius:11px;padding:12px 13px;cursor:pointer;margin-bottom:7px;text-align:left;color:var(--text);}
+.task-btn.done{background:rgba(78,203,141,.07);border-color:var(--green);}
+.task-btn:disabled{cursor:default;}
+.task-emoji{font-size:20px;min-width:26px;text-align:center;}
+.task-info{flex:1;}
+.task-name{font-size:13px;font-weight:600;display:block;color:var(--text);}
+.task-type{font-size:10px;color:var(--muted);}
+.task-note-text{font-size:10px;color:var(--accentL);margin-top:2px;font-style:italic;}
+.task-right{display:flex;flex-direction:column;align-items:flex-end;gap:3px;}
+.task-pts{font-size:12px;font-weight:700;color:var(--gold);}
+.task-check{font-size:15px;font-weight:700;}
+.task-check.on{color:var(--green);}
+.task-check.off{color:var(--muted);}
+
+/* PROGRESS */
+.progress-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+.progress-txt{font-size:11px;color:var(--muted);white-space:nowrap;}
+.progress-bg{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+.progress-fill{height:100%;background:var(--green);border-radius:2px;transition:width .4s;}
+
+/* REWARDS */
+.reward-card{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:11px;padding:11px 13px;margin-bottom:7px;}
+.reward-card.locked{opacity:.4;}
+.reward-cost{display:flex;flex-direction:column;align-items:center;min-width:42px;}
+.reward-cost-num{font-size:16px;font-weight:800;color:var(--gold);line-height:1;}
+.reward-cost-lbl{font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+.reward-body{flex:1;}
+.reward-label{font-size:12px;font-weight:700;margin-bottom:2px;}
+.reward-desc{font-size:10px;color:var(--muted);line-height:1.4;}
+
+/* HISTORY */
+.hist-card{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:11px 13px;margin-bottom:7px;cursor:pointer;}
+.hist-date{font-size:10px;color:var(--muted);margin-bottom:5px;letter-spacing:1px;}
+.hist-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.hist-done{font-size:12px;color:var(--green);font-weight:600;}
+.hist-missed{font-size:12px;color:var(--red);font-weight:600;}
+.hist-earned{font-size:12px;color:var(--gold);font-weight:700;}
+.hist-streak{font-size:11px;color:var(--orange);margin-left:auto;}
+.hist-penalty{font-size:10px;color:var(--orange);margin-top:5px;}
+.hist-detail{display:none;margin-top:8px;border-top:1px solid var(--border);padding-top:8px;}
+.hist-detail.open{display:block;}
+.hist-task-row{font-size:11px;padding:2px 0;color:var(--muted);}
+.hist-task-row.done{color:var(--green);}
+
+/* BUTTONS */
+.btn-primary{width:100%;padding:13px;background:var(--accent);border:none;border-radius:11px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.5px;margin-top:4px;}
+.btn-primary:active{opacity:.85;}
+.btn-small{padding:6px 12px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;}
+.btn-small:active{opacity:.85;}
+.btn-small.locked{background:var(--border);color:var(--muted);cursor:not-allowed;}
+.btn-small.danger{background:rgba(224,82,82,.15);border:1px solid var(--red);color:var(--red);}
+.btn-small.green{background:rgba(78,203,141,.15);border:1px solid var(--green);color:var(--green);}
+.btn-outline{padding:8px 14px;background:none;border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;cursor:pointer;}
+.submitted-msg{text-align:center;padding:13px;color:var(--muted);font-size:12px;border:1px solid var(--border);border-radius:11px;}
+
+/* INPUTS */
+input[type=number],input[type=text],textarea,select{background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;padding:11px 13px;width:100%;font-family:inherit;outline:none;-webkit-appearance:none;appearance:none;}
+input[type=number]:focus,input[type=text]:focus,textarea:focus,select:focus{border-color:var(--accent);}
+textarea{resize:none;min-height:85px;line-height:1.5;font-size:13px;}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%237a8099' d='M5 6L0 0h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:30px;}
+.input-row{display:flex;gap:7px;align-items:center;margin-bottom:9px;}
+.input-label{font-size:11px;color:var(--muted);margin-bottom:5px;}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;background:var(--border);border-radius:2px;outline:none;padding:0;border:none;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--accent);cursor:pointer;border:2px solid var(--bg);}
+
+/* MOOD */
+.mood-row{display:flex;gap:5px;margin-bottom:11px;}
+.mood-btn{flex:1;padding:9px 3px;background:var(--card);border:1px solid var(--border);border-radius:9px;font-size:20px;cursor:pointer;text-align:center;}
+.mood-btn.selected{border-color:var(--accent);background:rgba(124,109,250,.15);}
+
+/* DIARY */
+.diary-card{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:13px;margin-bottom:9px;}
+.diary-date-lbl{font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:5px;}
+.diary-mood{font-size:20px;margin-bottom:5px;}
+.diary-intent{font-size:11px;color:var(--accentL);font-style:italic;margin-bottom:5px;}
+.diary-text{font-size:12px;line-height:1.6;white-space:pre-wrap;}
+
+/* WORKOUT */
+.exercise-row{display:flex;align-items:center;gap:6px;margin-bottom:7px;}
+.exercise-del{padding:8px;background:none;border:1px solid var(--border);border-radius:8px;color:var(--red);cursor:pointer;font-size:13px;flex-shrink:0;}
+.workout-entry{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:13px;margin-bottom:9px;}
+.workout-date-lbl{font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:7px;}
+.exercise-item{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);}
+.exercise-item:last-child{border-bottom:none;}
+.exercise-item-name{font-size:12px;}
+.exercise-item-val{font-size:12px;color:var(--gold);font-weight:700;}
+
+/* CHART */
+.chart-wrap{position:relative;height:150px;margin:8px 0;}
+canvas{width:100%!important;height:100%!important;}
+.chart-label{font-size:9px;color:var(--muted);text-align:center;margin-top:3px;}
+
+/* WEIGHT */
+.weight-hero{text-align:center;padding:14px 0 6px;}
+.weight-big{font-size:48px;font-weight:800;line-height:1;letter-spacing:-2px;}
+.weight-unit{font-size:16px;color:var(--muted);font-weight:400;}
+.weight-diff{font-size:12px;margin-top:5px;font-weight:600;}
+.goal-row{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:3px;}
+.goal-bar-bg{height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:11px;}
+.goal-bar-fill{height:100%;border-radius:3px;transition:width .5s;}
+
+/* STAT GRID */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:12px;}
+.stat-box{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:12px;text-align:center;}
+.stat-box-val{font-size:24px;font-weight:800;line-height:1;}
+.stat-box-lbl{font-size:9px;color:var(--muted);margin-top:3px;}
+
+/* HEATMAP */
+.heatmap{display:flex;flex-wrap:wrap;gap:3px;margin:6px 0;}
+.hm-cell{width:13px;height:13px;border-radius:2px;background:var(--border);}
+.hm-cell.l1{background:rgba(124,109,250,.25);}
+.hm-cell.l2{background:rgba(124,109,250,.5);}
+.hm-cell.l3{background:rgba(124,109,250,.75);}
+.hm-cell.l4{background:var(--accent);}
+
+/* SUB TABS */
+.sub-tabs{display:flex;gap:5px;margin-bottom:12px;overflow-x:auto;}
+.sub-tabs::-webkit-scrollbar{display:none;}
+.sub-tab{padding:6px 13px;background:var(--card);border:1px solid var(--border);border-radius:20px;font-size:11px;color:var(--muted);cursor:pointer;font-weight:600;white-space:nowrap;flex-shrink:0;}
+.sub-tab.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+
+/* MONEY */
+.money-hero{background:linear-gradient(135deg,rgba(109,212,160,.15),rgba(124,109,250,.1));border:1px solid var(--rub);border-radius:14px;padding:18px;margin-bottom:12px;text-align:center;}
+.money-big{font-size:44px;font-weight:800;color:var(--rub);line-height:1;letter-spacing:-1px;}
+.money-sub{font-size:12px;color:var(--muted);margin-top:4px;}
+.money-bars{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.money-bar-card{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:11px;}
+.money-bar-label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;}
+.money-bar-val{font-size:16px;font-weight:800;margin-bottom:5px;}
+.money-bar-bg{height:5px;background:var(--border);border-radius:3px;overflow:hidden;}
+.money-bar-fill{height:100%;border-radius:3px;transition:width .4s;}
+.spend-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);}
+.spend-row:last-child{border-bottom:none;}
+.spend-name{font-size:12px;}
+.spend-amt{font-size:12px;font-weight:700;color:var(--red);}
+.fine-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);}
+.fine-row:last-child{border-bottom:none;}
+.fine-reason{font-size:11px;color:var(--muted);}
+.fine-amt{font-size:12px;font-weight:700;color:var(--red);}
+
+/* FOOD */
+.food-card{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:13px;margin-bottom:9px;}
+.food-badge{display:inline-block;padding:3px 8px;border-radius:6px;font-size:10px;font-weight:700;margin-bottom:6px;}
+.food-badge.free{background:rgba(78,203,141,.2);color:var(--green);}
+.food-badge.limited{background:rgba(232,201,106,.2);color:var(--gold);}
+.food-badge.strict{background:rgba(224,82,82,.2);color:var(--red);}
+
+/* DAY NAV */
+.day-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;background:var(--card);border:1px solid var(--border);border-radius:11px;padding:10px 13px;}
+.day-nav-btn{background:none;border:none;color:var(--accentL);font-size:20px;cursor:pointer;padding:0 6px;line-height:1;}
+.day-nav-btn:disabled{color:var(--border);cursor:default;}
+.day-nav-date{font-size:13px;font-weight:700;text-align:center;}
+.day-nav-sub{font-size:10px;color:var(--muted);text-align:center;}
+
+/* SETTINGS */
+.settings-section{margin-bottom:18px;}
+.task-edit-row{display:flex;align-items:center;gap:5px;margin-bottom:7px;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:9px;}
+.task-edit-emoji{font-size:16px;min-width:22px;text-align:center;}
+.task-edit-name{flex:2;background:none;border:none;color:var(--text);font-size:12px;padding:0;font-family:inherit;outline:none;}
+.task-edit-pts{width:48px;background:none;border:none;color:var(--gold);font-size:12px;font-weight:700;padding:0;text-align:center;font-family:inherit;outline:none;}
+.task-edit-type{font-size:9px;color:var(--muted);background:var(--border);border:none;border-radius:5px;padding:3px 5px;cursor:pointer;font-family:inherit;}
+.task-edit-del{background:none;border:none;color:var(--red);font-size:14px;cursor:pointer;padding:0;flex-shrink:0;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="header">
+    <div class="header-top">
+      <span class="logo">ЕЖЕДНЕВНИК</span>
+      <div class="header-right">
+        <div class="stat-row">
+          <div class="stat-chip"><span class="stat-val" id="hdr-pts">0</span><span class="stat-lbl">очки</span></div>
+          <div class="stat-chip"><span class="stat-val" id="hdr-streak">🔥0</span><span class="stat-lbl">серия</span></div>
+          <div class="stat-chip"><span class="stat-val" id="hdr-shields">🛡0</span><span class="stat-lbl">щиты</span></div>
+        </div>
+        <button class="gear-btn" onclick="openSettings()">⚙️</button>
+      </div>
+    </div>
+    <div class="level-row">
+      <span class="level-name" id="level-name">🌱 Старт</span>
+      <div class="level-bar-bg"><div class="level-bar-fill" id="level-bar" style="width:0%"></div></div>
+      <span class="level-next" id="level-next">⚙️ Ритм</span>
+    </div>
+    <p class="level-perk" id="level-perk">Базовая система</p>
+  </div>
+  <div id="content"></div>
+  <nav id="bottom-nav">
+    <button class="nav-btn active" data-tab="today" onclick="switchTab('today')"><span class="nav-icon">✦</span>Сегодня</button>
+    <button class="nav-btn" data-tab="log" onclick="switchTab('log')"><span class="nav-icon">📅</span>Журнал</button>
+    <button class="nav-btn" data-tab="money" onclick="switchTab('money')"><span class="nav-icon">💰</span>Деньги</button>
+    <button class="nav-btn" data-tab="health" onclick="switchTab('health')"><span class="nav-icon">⚖️</span>Здоровье</button>
+    <button class="nav-btn" data-tab="stats" onclick="switchTab('stats')"><span class="nav-icon">📊</span>Стата</button>
+    <button class="nav-btn" data-tab="rewards" onclick="switchTab('rewards')"><span class="nav-icon">◈</span>Награды</button>
+  </nav>
+</div>
+<div id="toast"></div>
+<div id="modal-container"></div>
+
+<script>
+// ═══════════════ CONSTANTS ═══════════════
+const DEFAULT_TASKS=[
+  {id:1,name:"Кино",points:1.5,type:"fun",emoji:"🎬"},
+  {id:2,name:"Книга",points:3,type:"important",emoji:"📚"},
+  {id:3,name:"Сериал",points:1,type:"fun",emoji:"📺"},
+  {id:4,name:"Спорт",points:3,type:"important",emoji:"💪"},
+  {id:5,name:"Аниме",points:1,type:"fun",emoji:"🌸"},
+  {id:6,name:"Уборка",points:3,type:"important",emoji:"🧹"},
+  {id:7,name:"Манга",points:1,type:"fun",emoji:"📖"},
+  {id:8,name:"Английский",points:2,type:"important",emoji:"🇬🇧"},
+  {id:9,name:"Онлайн игра",points:1,type:"fun",emoji:"🎮"},
+  {id:10,name:"Сингл игра",points:2,type:"important",emoji:"🕹️"},
+  {id:11,name:"Ютуб",points:0.5,type:"fun",emoji:"▶️"},
+  {id:12,name:"Демка",points:3,type:"important",emoji:"🎵"},
+  {id:13,name:"Кози гейм",points:0.5,type:"fun",emoji:"🌿"},
+  {id:14,name:"Прогулка",points:2,type:"important",emoji:"🚶"},
+  {id:15,name:"Прослушивание",points:1,type:"fun",emoji:"🎧"},
+  {id:16,name:"Сценарий",points:3,type:"important",emoji:"✍️"},
+];
+const DEFAULT_REWARDS=[
+  {id:"r1",cost:5,label:"Свободный вечер",desc:"Делаешь что хочешь без чувства вины"},
+  {id:"r2",cost:10,label:"Выбор задачи",desc:"Выбираешь сам одну задачу завтра"},
+  {id:"r3",cost:15,label:"День без задач",desc:"Один день без задач и штрафов"},
+  {id:"r4",cost:20,label:"Убрать задачу",desc:"Убираешь одну задачу из завтрашнего списка"},
+  {id:"r5",cost:25,label:"🍫 День сладкого",desc:"Ограниченно сладкого сегодня без штрафа"},
+  {id:"r6",cost:40,label:"🍕 День без контроля",desc:"Один день без подсчёта калорий"},
+  {id:"r7",cost:30,label:"Небольшая покупка",desc:"Книга, саундтрек, что-то для хобби"},
+  {id:"r8",cost:50,label:"+2000 ₽ к лимиту",desc:"Лимит на неделю увеличивается на 2000 ₽"},
+  {id:"r9",cost:80,label:"+5000 ₽ к бюджету",desc:"Бонус к месячному бюджету на следующий цикл"},
+  {id:"r10",cost:100,label:"Желанная покупка",desc:"Одежда, гаджет, игра — о чём давно думаешь"},
+];
+const LEVELS=[
+  {name:"🌱 Старт",min:0,perk:"Базовая система",next:"⚙️ Ритм"},
+  {name:"⚙️ Ритм",min:50,perk:"Раз в неделю — выбираешь 1 задачу сам",next:"🔥 Поток"},
+  {name:"🔥 Поток",min:150,perk:"Раз в неделю — пропустить 1 без штрафа",next:"💎 Мастер"},
+  {name:"💎 Мастер",min:300,perk:"Раз в месяц — выходной без штрафа",next:""},
+];
+const MOODS=["😴","😔","😐","🙂","😄"];
+const UNITS=["шт","повт","шагов","сек","км","кг"];
+const BASE_MONTHLY=30000;
+const BASE_WEEKLY=7000;
+const FINE_1=200,FINE_2=500,FINE_3=1000,FINE_WEEKLY=1500;
+
+// ═══════════════ STATE ═══════════════
+let S={
+  totalPoints:0,totalEarned:0,shields:0,streak:0,lastDay:null,
+  history:[],today:null,
+  tasks:JSON.parse(JSON.stringify(DEFAULT_TASKS)),
+  rewards:JSON.parse(JSON.stringify(DEFAULT_REWARDS)),
+  taskCount:5,allowRepeat:true,
+  // MONEY
+  monthlyBudget:BASE_MONTHLY,
+  weeklyBudgetBonus:0,
+  spending:[],   // [{date,name,amount}]
+  fines:[],      // [{date,reason,amount,toPenalty}]
+  // HEALTH
+  weightGoal:null,weightLog:[],workoutLog:[],
+  calorieGoal:2000,calorieLog:[],
+  // DIARY
+  diaryLog:[],
+  // FOOD REWARDS
+  freeFoodDays:[],limitedSweetDays:[],
+};
+
+function todayStr(){return new Date().toISOString().slice(0,10);}
+
+function loadState(){
+  try{const r=localStorage.getItem("dailyapp-v4");if(r)S={...S,...JSON.parse(r)};}catch(e){}
+}
+function saveState(){try{localStorage.setItem("dailyapp-v4",JSON.stringify(S));}catch(e){}}
+
+// ═══════════════ MONEY HELPERS ═══════════════
+function getBillingCycle(dateStr){
+  // Cycle: 10th of month → 9th of next month (inclusive)
+  const d=new Date(dateStr||todayStr());
+  let startYear=d.getFullYear(),startMonth=d.getMonth();
+  if(d.getDate()<10){startMonth--;if(startMonth<0){startMonth=11;startYear--;}}
+  const start=new Date(startYear,startMonth,10);
+  // End is 9th of the month after start
+  let endMonth=startMonth+1,endYear=startYear;
+  if(endMonth>11){endMonth=0;endYear++;}
+  const end=new Date(endYear,endMonth,9);
+  return{start:start.toISOString().slice(0,10),end:end.toISOString().slice(0,10)};
+}
+
+function getWeekRange(dateStr){
+  const d=new Date(dateStr||todayStr());
+  const day=d.getDay()||7;
+  const mon=new Date(d);mon.setDate(d.getDate()-day+1);
+  const sun=new Date(mon);sun.setDate(mon.getDate()+6);
+  return{start:mon.toISOString().slice(0,10),end:sun.toISOString().slice(0,10)};
+}
+
+function getMonthSpend(dateStr){
+  const{start,end}=getBillingCycle(dateStr);
+  return S.spending.filter(s=>s.date>=start&&s.date<=end).reduce((a,s)=>a+s.amount,0);
+}
+
+function getWeekSpend(dateStr){
+  const{start,end}=getWeekRange(dateStr);
+  return S.spending.filter(s=>s.date>=start&&s.date<=end).reduce((a,s)=>a+s.amount,0);
+}
+
+function getMonthFines(dateStr){
+  const{start,end}=getBillingCycle(dateStr);
+  return S.fines.filter(f=>f.date>=start&&f.date<=end).reduce((a,f)=>a+f.amount,0);
+}
+
+function getWeekFines(dateStr){
+  const{start,end}=getWeekRange(dateStr);
+  return S.fines.filter(f=>f.date>=start&&f.date<=end).reduce((a,f)=>a+f.amount,0);
+}
+
+function getEffectiveMonthlyBudget(){return S.monthlyBudget||BASE_MONTHLY;}
+function getEffectiveWeeklyBudget(){return BASE_WEEKLY+(S.weeklyBudgetBonus||0);}
+
+function applyMoneyFine(reason,amount){
+  S.fines.push({date:todayStr(),reason,amount,toPenalty:true});
+  saveState();
+  toast(`💸 Штраф: ${amount} ₽ → вклад. Причина: ${reason}`,"warn");
+}
+
+// ═══════════════ TOAST ═══════════════
+let toastTimer;
+function toast(msg,type="ok"){
+  const el=document.getElementById("toast");
+  el.textContent=msg;el.className=type+" show";
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove("show"),3000);
+}
+
+// ═══════════════ HEADER ═══════════════
+function updateHeader(){
+  document.getElementById("hdr-pts").textContent=S.totalPoints.toFixed(1);
+  document.getElementById("hdr-streak").textContent="🔥"+S.streak;
+  document.getElementById("hdr-shields").textContent="🛡"+S.shields;
+  const lvl=[...LEVELS].reverse().find(l=>S.totalEarned>=l.min)||LEVELS[0];
+  const ni=LEVELS.indexOf(lvl);const nxt=LEVELS[ni+1];
+  const pct=nxt?((S.totalEarned-lvl.min)/(nxt.min-lvl.min))*100:100;
+  document.getElementById("level-name").textContent=lvl.name;
+  document.getElementById("level-perk").textContent=lvl.perk;
+  document.getElementById("level-next").textContent=lvl.next||"";
+  document.getElementById("level-bar").style.width=Math.min(100,pct)+"%";
+}
+
+// ═══════════════ TABS ═══════════════
+let currentTab="today";
+let healthSub="weight";
+let logViewDate=todayStr();
+let tmpExercises=[];
+let selectedMood=null;
+
+function switchTab(tab){
+  currentTab=tab;
+  if(tab==="log")logViewDate=todayStr();
+  document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
+  render();
+}
+
+// ═══════════════ RENDER ═══════════════
+function render(){
+  updateHeader();
+  const el=document.getElementById("content");
+  if(currentTab==="today") el.innerHTML=renderToday();
+  else if(currentTab==="log") el.innerHTML=renderLog();
+  else if(currentTab==="money") el.innerHTML=renderMoney();
+  else if(currentTab==="health") el.innerHTML=renderHealth();
+  else if(currentTab==="stats") el.innerHTML=renderStats();
+  else if(currentTab==="rewards") el.innerHTML=renderRewards();
+  afterRender();
+}
+
+function afterRender(){
+  if(currentTab==="health"){
+    if(healthSub==="weight"&&S.weightLog.length>=2)drawWeightChart();
+    if(healthSub==="calories"&&S.calorieLog.length>=2)drawCalChart();
+  }
+  if(currentTab==="stats"&&S.history.length>=2)drawStatsChart();
+  if(currentTab==="money"&&S.spending.length>=2)drawSpendChart();
+}
+
+function esc(s){return(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>");}
+
+// ═══════════════ TODAY ═══════════════
+function pickRandom(arr,n,allowRepeat){
+  if(allowRepeat){const r=[];for(let i=0;i<n;i++)r.push(arr[Math.floor(Math.random()*arr.length)]);return r;}
+  return[...arr].sort(()=>Math.random()-.5).slice(0,Math.min(n,arr.length));
+}
+
+function generateTasks(){
+  const today=todayStr();
+  if(S.today?.date===today&&!S.today?.submitted){toast("Задачи уже сгенерированы","warn");return;}
+  const lastH=S.history[S.history.length-1];
+  const isBonus=S.streak>=5;
+  const isPenalty=lastH&&lastH.missed>=2&&!isBonus;
+  const important=S.tasks.filter(t=>t.type==="important");
+  const fun=S.tasks.filter(t=>t.type==="fun");
+  const n=S.taskCount||5;
+  let tasks;
+  if(isPenalty)tasks=pickRandom(important,n,S.allowRepeat);
+  else if(isBonus){
+    const f=pickRandom(fun,1,false);
+    const rest=pickRandom(S.tasks.filter(t=>t.id!==f[0].id),n-1,S.allowRepeat);
+    tasks=[...f,...rest].sort(()=>Math.random()-.5);
+  }else tasks=pickRandom(S.tasks,n,S.allowRepeat);
+  S.today={date:today,tasks:tasks.map((t,i)=>({...t,uid:i,done:false,note:""})),submitted:false,isBonus,isPenalty};
+  saveState();render();
+  if(isBonus)toast("🎉 Бонус-день!");
+  else if(isPenalty)toast("⚠️ Штрафной день — только важные","warn");
+  else toast("Задачи сгенерированы!");
+}
+
+function toggleTask(uid){
+  if(!S.today||S.today.submitted)return;
+  S.today.tasks=S.today.tasks.map(t=>t.uid===uid?{...t,done:!t.done}:t);
+  saveState();render();
+}
+
+function addMoreTask(){
+  if(!S.today||S.today.submitted)return;
+  const t=pickRandom(S.tasks,1,true)[0];
+  S.today.tasks.push({...t,uid:Date.now(),done:false,note:""});
+  saveState();render();toast("Добавлена задача!");
+}
+
+function submitDay(){
+  if(!S.today||S.today.submitted)return;
+  const{tasks}=S.today;
+  const done=tasks.filter(t=>t.done);
+  const missed=tasks.filter(t=>!t.done);
+  const earned=done.reduce((s,t)=>s+t.points,0);
+  let deduct=0,extraPenalty="",newShields=S.shields;
+  let moneyFine=0,moneyReason="";
+
+  if(missed.length>0){
+    if(newShields>0){newShields--;extraPenalty="Щит поглотил штраф";}
+    else if(missed.length===1){
+      deduct=1;extraPenalty="-1 очко";moneyFine=FINE_1;moneyReason="Пропущена 1 задача";
+    }else if(missed.length<=3){
+      deduct=2;extraPenalty="-2 очка";moneyFine=FINE_2;moneyReason=`Пропущено ${missed.length} задачи`;
+    }else{
+      deduct=4;extraPenalty="-4 очка";moneyFine=FINE_3;moneyReason=`Пропущено ${missed.length} задач`;
+    }
+  }
+
+  const today=todayStr();
+  const yesterday=new Date(Date.now()-86400000).toISOString().slice(0,10);
+  let newStreak=missed.length===0?(S.lastDay===yesterday?S.streak+1:1):0;
+  if(newStreak>0&&newStreak%7===0&&newShields<2){newShields=Math.min(2,newShields+1);}
+  const bonus=newStreak>0&&newStreak%3===0?2:0;
+  const finalEarned=Math.max(0,earned-deduct+bonus);
+
+  // Points bonuses → money
+  if(S.totalEarned+finalEarned>=50&&S.totalEarned<50){
+    toast("⚙️ Уровень «Ритм»! Новый лимит расходов открыт","ok");
+  }
+
+  if(moneyFine>0){
+    S.fines.push({date:today,reason:moneyReason,amount:moneyFine,toPenalty:true});
+  }
+
+  // Weekly spend check
+  const weekSpend=getWeekSpend(today);
+  const weekBudget=getEffectiveWeeklyBudget();
+  if(weekSpend>weekBudget&&!S.fines.find(f=>f.date>=getWeekRange(today).start&&f.reason==="Превышен недельный лимит")){
+    const overFine=FINE_WEEKLY;
+    S.fines.push({date:today,reason:"Превышен недельный лимит",amount:overFine,toPenalty:true});
+    toast(`⚠️ Превышен недельный лимит! Штраф ${overFine} ₽ → вклад`,"warn");
+  }
+
+  S.history.push({
+    date:today,done:done.length,missed:missed.length,earned:finalEarned,
+    penalty:extraPenalty,streak:newStreak,moneyFine,
+    tasks:tasks.map(t=>({name:t.name,emoji:t.emoji,done:t.done,points:t.points,note:t.note}))
+  });
+  S.totalPoints=Math.max(0,S.totalPoints+finalEarned);
+  S.totalEarned+=finalEarned;
+  S.shields=newShields;S.streak=newStreak;S.lastDay=today;
+  S.today.submitted=true;
+  saveState();render();
+
+  let msg=missed.length===0?`✦ День закрыт! +${finalEarned} очков${bonus?" (+"+bonus+" бонус)":""}`:
+    `День закрыт. +${finalEarned} очков. ${extraPenalty}`;
+  if(moneyFine>0)msg+=` | 💸 ${moneyFine} ₽ → вклад`;
+  toast(msg,missed.length===0?"ok":"warn");
+}
+
+function openTaskNote(uid){
+  const task=S.today?.tasks?.find(t=>t.uid===uid);if(!task)return;
+  showModal(`<button class="modal-close" onclick="closeModal()">×</button>
+    <div class="modal-title">Заметка к «${task.name}»</div>
+    <textarea id="task-note-input" placeholder="Что сделал? Как прошло...">${task.note||""}</textarea>
+    <button class="btn-primary" style="margin-top:10px" onclick="saveTaskNote(${uid})">Сохранить</button>`);
+}
+
+function saveTaskNote(uid){
+  const val=document.getElementById("task-note-input")?.value||"";
+  if(S.today)S.today.tasks=S.today.tasks.map(t=>t.uid===uid?{...t,note:val}:t);
+  saveState();closeModal();render();
+}
+
+function renderToday(){
+  const today=todayStr();
+  // Food status
+  const isFreeDay=S.freeFoodDays?.includes(today);
+  const isSweetDay=S.limitedSweetDays?.includes(today);
+
+  if(!S.today||S.today.date!==today){
+    return`<div class="empty">
+      <div class="empty-icon">✦</div>
+      <p class="empty-text">Задачи на сегодня ещё не сгенерированы</p>
+      <div style="margin-bottom:14px">
+        <div class="input-label">Количество задач: <b id="tc-d">${S.taskCount}</b></div>
+        <input type="range" min="1" max="12" value="${S.taskCount}" oninput="S.taskCount=+this.value;document.getElementById('tc-d').textContent=this.value"/>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-bottom:18px;cursor:pointer">
+        <input type="checkbox" ${S.allowRepeat?"checked":""} onchange="S.allowRepeat=this.checked" style="width:auto;padding:0;border:none;background:none"/>
+        Разрешить повторяющиеся задачи
+      </label>
+      <button class="btn-primary" onclick="generateTasks()">Сгенерировать задачи</button>
+    </div>`;
+  }
+
+  const{tasks,submitted,isPenalty,isBonus}=S.today;
+  const doneN=tasks.filter(t=>t.done).length;
+  const pct=Math.round((doneN/tasks.length)*100);
+  let html="";
+  if(isFreeDay)html+=`<div class="card" style="margin-bottom:10px;border-color:var(--green)"><span class="food-badge free">🍕 День без контроля калорий</span><div style="font-size:11px;color:var(--muted)">Сегодня можно не считать калории</div></div>`;
+  if(isSweetDay)html+=`<div class="card" style="margin-bottom:10px;border-color:var(--gold)"><span class="food-badge limited">🍫 День ограниченного сладкого</span><div style="font-size:11px;color:var(--muted)">Немного сладкого сегодня разрешено</div></div>`;
+  if(isPenalty)html+=`<div class="card warn" style="margin-bottom:10px;font-size:11px;font-weight:600;">⚠️ Штрафной день — только важные задачи</div>`;
+  if(isBonus)html+=`<div class="card green" style="margin-bottom:10px;font-size:11px;font-weight:600;">🎉 Бонус-день!</div>`;
+  html+=`<div class="progress-row">
+    <span class="progress-txt">${doneN}/${tasks.length}</span>
+    <div class="progress-bg"><div class="progress-fill" style="width:${pct}%"></div></div>
+    <span style="font-size:11px;color:var(--muted)">${pct}%</span>
+  </div>`;
+  tasks.forEach(t=>{
+    html+=`<button class="task-btn ${t.done?"done":""}" onclick="toggleTask(${t.uid})" ${submitted?"disabled":""}>
+      <span class="task-emoji">${t.emoji}</span>
+      <div class="task-info">
+        <span class="task-name">${t.name}</span>
+        <span class="task-type">${t.type==="important"?"⚡ важная":"🎉 развлечение"}</span>
+        ${t.note?`<span class="task-note-text">${esc(t.note)}</span>`:""}
+      </div>
+      <div class="task-right">
+        <span class="task-pts">+${t.points}</span>
+        <span class="task-check ${t.done?"on":"off"}">${t.done?"✓":"✕"}</span>
+      </div>
+    </button>`;
+    if(!submitted&&t.done){
+      html+=`<div style="text-align:right;margin:-3px 0 7px">
+        <button class="btn-small" style="font-size:10px;padding:4px 9px" onclick="openTaskNote(${t.uid})">📝 заметка</button>
+      </div>`;
+    }
+  });
+  if(!submitted){
+    html+=`<button class="btn-outline" style="width:100%;margin-bottom:8px" onclick="addMoreTask()">+ Добавить ещё задачу</button>`;
+    html+=`<button class="btn-primary" onclick="submitDay()">Завершить день</button>`;
+  }else{
+    html+=`<div class="submitted-msg">✦ День завершён — возвращайся завтра</div>`;
+  }
+  return html;
+}
+
+// ═══════════════ LOG (Journal) ═══════════════
+function renderLog(){
+  const dates=getAllDates();
+  const idx=dates.indexOf(logViewDate);
+  const hasPrev=idx>0;
+  const hasNext=idx<dates.length-1||logViewDate!==todayStr();
+
+  // Date label
+  const d=new Date(logViewDate);
+  const dayNames=["вс","пн","вт","ср","чт","пт","сб"];
+  const months=["янв","фев","мар","апр","май","июн","июл","авг","сен","окт","ноя","дек"];
+  const isToday=logViewDate===todayStr();
+  const dayLabel=isToday?"Сегодня":`${dayNames[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]}`;
+
+  let html=`<div class="day-nav">
+    <button class="day-nav-btn" onclick="logPrevDay()" ${!hasPrev?"disabled":""}>‹</button>
+    <div>
+      <div class="day-nav-date">${dayLabel}</div>
+      <div class="day-nav-sub">${logViewDate}</div>
+    </div>
+    <button class="day-nav-btn" onclick="logNextDay()" ${logViewDate===todayStr()?"disabled":""}>›</button>
+  </div>`;
+
+  html+=renderDayLog(logViewDate);
+  html+=`<button class="btn-outline" style="width:100%;margin-top:10px" onclick="openDiaryModal('${logViewDate}')">📓 Запись в дневник</button>`;
+  return html;
+}
+
+function getAllDates(){
+  const set=new Set();
+  S.history.forEach(h=>set.add(h.date));
+  S.diaryLog.forEach(d=>set.add(d.date));
+  S.weightLog.forEach(w=>set.add(w.date));
+  S.calorieLog.forEach(c=>set.add(c.date));
+  S.workoutLog.forEach(w=>set.add(w.date));
+  set.add(todayStr());
+  return[...set].sort();
+}
+
+function logPrevDay(){
+  const dates=getAllDates();
+  const idx=dates.indexOf(logViewDate);
+  if(idx>0){logViewDate=dates[idx-1];render();}
+}
+function logNextDay(){
+  const dates=getAllDates();
+  const idx=dates.indexOf(logViewDate);
+  if(idx<dates.length-1){logViewDate=dates[idx+1];render();}
+  else if(logViewDate!==todayStr()){logViewDate=todayStr();render();}
+}
+
+function renderDayLog(date){
+  const hist=S.history.find(h=>h.date===date);
+  const diary=S.diaryLog.find(d=>d.date===date);
+  const weight=S.weightLog.find(w=>w.date===date);
+  const cal=S.calorieLog.find(c=>c.date===date);
+  const workout=S.workoutLog.find(w=>w.date===date);
+  const isToday=date===todayStr();
+  let html="";
+  const hasAnything=hist||diary||weight||cal||workout||(isToday&&S.today);
+
+  if(!hasAnything){
+    return`<div class="empty"><div class="empty-icon">◈</div><p class="empty-text">Нет записей за этот день</p></div>`;
+  }
+
+  // Tasks
+  const todayTasks=isToday&&S.today?S.today:null;
+  if(hist||(todayTasks)){
+    html+=`<div class="section-label">Задачи</div><div class="card">`;
+    const taskList=hist?.tasks||(todayTasks?.tasks?.map(t=>({...t,done:t.done})));
+    if(taskList&&taskList.length>0){
+      taskList.forEach(t=>{
+        html+=`<div class="hist-task-row ${t.done?"done":""}">
+          ${t.done?"✓":"✕"} ${t.emoji||""} ${t.name} <span style="color:var(--gold)">+${t.points}</span>
+          ${t.note?`<br><span style="color:var(--accentL);font-style:italic;font-size:10px">${esc(t.note)}</span>`:""}
+        </div>`;
+      });
+      if(hist){
+        html+=`<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:flex;gap:10px;font-size:11px">
+          <span style="color:var(--green)">✓ ${hist.done}</span>
+          <span style="color:var(--red)">✕ ${hist.missed}</span>
+          <span style="color:var(--gold)">+${hist.earned.toFixed(1)} очков</span>
+          ${hist.streak>0?`<span style="color:var(--orange)">🔥${hist.streak}</span>`:""}
+        </div>`;
+        if(hist.moneyFine>0)html+=`<div style="font-size:10px;color:var(--red);margin-top:4px">💸 Штраф: ${hist.moneyFine} ₽</div>`;
+      }
+    }else{html+=`<div style="color:var(--muted);font-size:12px">Задачи не выполнены</div>`;}
+    html+=`</div>`;
+  }
+
+  // Diary
+  if(diary){
+    html+=`<div class="section-label">Дневник</div><div class="diary-card">`;
+    if(diary.mood!==null&&diary.mood!==undefined)html+=`<div class="diary-mood">${MOODS[diary.mood]||""}</div>`;
+    if(diary.intent)html+=`<div class="diary-intent">"${esc(diary.intent)}"</div>`;
+    if(diary.note)html+=`<div class="diary-text">${esc(diary.note)}</div>`;
+    html+=`</div>`;
+  }
+
+  // Health
+  if(weight||cal||workout){
+    html+=`<div class="section-label">Здоровье</div>`;
+    if(weight)html+=`<div class="card"><span style="font-size:11px;color:var(--muted)">Вес</span> <span style="font-size:20px;font-weight:800;color:var(--text)">${weight.weight} кг</span></div>`;
+    if(cal){
+      const over=cal.calories>(S.calorieGoal||2000);
+      html+=`<div class="card"><span style="font-size:11px;color:var(--muted)">Калории</span> <span style="font-size:20px;font-weight:800;color:${over?"var(--red)":"var(--green)"}">${cal.calories} ккал</span></div>`;
+    }
+    if(workout&&workout.exercises?.length>0){
+      html+=`<div class="card"><div style="font-size:11px;color:var(--muted);margin-bottom:8px">Тренировка</div>`;
+      workout.exercises.forEach(e=>{html+=`<div class="exercise-item"><span class="exercise-item-name">${e.name}</span><span class="exercise-item-val">${e.value} ${e.unit}</span></div>`;});
+      html+=`</div>`;
+    }
+  }
+
+  // Spending
+  const daySpend=S.spending.filter(s=>s.date===date);
+  if(daySpend.length>0){
+    html+=`<div class="section-label">Расходы</div><div class="card">`;
+    daySpend.forEach(s=>{html+=`<div class="spend-row"><span class="spend-name">${esc(s.name)}</span><span class="spend-amt">-${s.amount} ₽</span></div>`;});
+    const total=daySpend.reduce((a,s)=>a+s.amount,0);
+    html+=`<div style="font-size:11px;color:var(--muted);margin-top:6px;text-align:right">Итого: <b style="color:var(--red)">${total} ₽</b></div>`;
+    html+=`</div>`;
+  }
+
+  return html;
+}
+
+// ═══════════════ MONEY ═══════════════
+function renderMoney(){
+  const today=todayStr();
+  const monthSpend=getMonthSpend(today);
+  const weekSpend=getWeekSpend(today);
+  const monthBudget=getEffectiveMonthlyBudget();
+  const weekBudget=getEffectiveWeeklyBudget();
+  const monthLeft=Math.max(0,monthBudget-monthSpend);
+  const weekLeft=Math.max(0,weekBudget-weekSpend);
+  const monthPct=Math.min(100,Math.round((monthSpend/monthBudget)*100));
+  const weekPct=Math.min(100,Math.round((weekSpend/weekBudget)*100));
+  const monthColor=monthPct>90?"var(--red)":monthPct>70?"var(--orange)":"var(--rub)";
+  const weekColor=weekPct>90?"var(--red)":weekPct>70?"var(--orange)":"var(--rub)";
+  const{start,end}=getBillingCycle(today);
+  const totalFines=getMonthFines(today);
+
+  let html=`<div class="money-hero">
+    <div class="money-big">${monthLeft.toLocaleString("ru")} ₽</div>
+    <div class="money-sub">осталось из ${monthBudget.toLocaleString("ru")} ₽ · цикл до ${end}</div>
+  </div>`;
+
+  html+=`<div class="money-bars">
+    <div class="money-bar-card">
+      <div class="money-bar-label">Неделя</div>
+      <div class="money-bar-val" style="color:${weekColor}">${weekLeft.toLocaleString("ru")} ₽</div>
+      <div class="money-bar-bg"><div class="money-bar-fill" style="width:${weekPct}%;background:${weekColor}"></div></div>
+      <div style="font-size:9px;color:var(--muted);margin-top:4px">из ${weekBudget.toLocaleString("ru")} ₽</div>
+    </div>
+    <div class="money-bar-card">
+      <div class="money-bar-label">Штрафы → вклад</div>
+      <div class="money-bar-val" style="color:var(--red)">${totalFines.toLocaleString("ru")} ₽</div>
+      <div style="font-size:9px;color:var(--muted);margin-top:4px">за текущий цикл</div>
+    </div>
+  </div>`;
+
+  // Overspend warning
+  if(weekSpend>weekBudget){
+    html+=`<div class="card red" style="margin-bottom:10px">
+      <div style="font-size:12px;font-weight:700;color:var(--red)">⚠️ Превышен недельный лимит на ${(weekSpend-weekBudget).toLocaleString("ru")} ₽</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px">Штраф ${FINE_WEEKLY} ₽ зачислен в копилку вклада</div>
+    </div>`;
+  }
+
+  // Add spending
+  html+=`<div class="card" style="margin-bottom:10px">
+    <div class="section-label">Добавить расход</div>
+    <div class="input-row">
+      <input type="text" id="spend-name" placeholder="Название (кофе, такси...)" style="flex:2"/>
+    </div>
+    <div class="input-row">
+      <input type="number" id="spend-amt" placeholder="Сумма, ₽" min="1" style="flex:1"/>
+      <button class="btn-small" onclick="addSpend()">+ Добавить</button>
+    </div>
+  </div>`;
+
+  // Today spending
+  const todaySpend=S.spending.filter(s=>s.date===today);
+  if(todaySpend.length>0){
+    html+=`<div class="section-label">Сегодня</div><div class="card" style="margin-bottom:10px">`;
+    todaySpend.forEach((s,i)=>{
+      html+=`<div class="spend-row">
+        <span class="spend-name">${esc(s.name)}</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="spend-amt">-${s.amount} ₽</span>
+          <button style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px" onclick="deleteSpend('${today}',${i})">✕</button>
+        </div>
+      </div>`;
+    });
+    const dayTotal=todaySpend.reduce((a,s)=>a+s.amount,0);
+    html+=`<div style="font-size:11px;color:var(--muted);margin-top:6px;text-align:right">Итого сегодня: <b style="color:var(--red)">${dayTotal.toLocaleString("ru")} ₽</b></div>`;
+    html+=`</div>`;
+  }
+
+  // Chart
+  if(S.spending.length>=2){
+    html+=`<div class="section-label">Расходы по дням</div><div class="chart-wrap"><canvas id="spendChart"></canvas></div><div class="chart-label">последние 14 дней</div>`;
+  }
+
+  // Fines list
+  const monthFines=S.fines.filter(f=>{const{start,end}=getBillingCycle(today);return f.date>=start&&f.date<=end;});
+  if(monthFines.length>0){
+    html+=`<div class="section-label" style="margin-top:12px">Штрафы в вклад (цикл)</div><div class="card">`;
+    monthFines.forEach(f=>{
+      html+=`<div class="fine-row"><span class="fine-reason">${f.date} · ${f.reason}</span><span class="fine-amt">${f.amount} ₽</span></div>`;
+    });
+    html+=`<div style="font-size:11px;color:var(--muted);margin-top:6px;text-align:right">💸 Перевести на вклад: <b style="color:var(--red)">${totalFines.toLocaleString("ru")} ₽</b></div>`;
+    html+=`</div>`;
+  }
+
+  return html;
+}
+
+function addSpend(){
+  const name=document.getElementById("spend-name")?.value?.trim();
+  const amt=parseInt(document.getElementById("spend-amt")?.value);
+  if(!name||!amt||amt<1){toast("Введи название и сумму","err");return;}
+  S.spending.push({date:todayStr(),name,amount:amt});
+  // Check weekly limit
+  const ws=getWeekSpend(todayStr());
+  const wb=getEffectiveWeeklyBudget();
+  if(ws>wb){
+    const already=S.fines.find(f=>f.date>=getWeekRange(todayStr()).start&&f.reason==="Превышен недельный лимит");
+    if(!already){
+      S.fines.push({date:todayStr(),reason:"Превышен недельный лимит",amount:FINE_WEEKLY,toPenalty:true});
+      toast(`⚠️ Превышен лимит ${wb.toLocaleString("ru")} ₽! Штраф ${FINE_WEEKLY} ₽ → вклад`,"warn");
+    }
+  }
+  saveState();render();toast(`+${amt} ₽ записано`);
+}
+
+function deleteSpend(date,idx){
+  const dayItems=S.spending.filter(s=>s.date===date);
+  const item=dayItems[idx];
+  if(!item)return;
+  const globalIdx=S.spending.indexOf(item);
+  if(globalIdx>=0)S.spending.splice(globalIdx,1);
+  saveState();render();
+}
+
+function drawSpendChart(){
+  const canvas=document.getElementById("spendChart");if(!canvas)return;
+  const days=[];const today=new Date();
+  for(let i=13;i>=0;i--){
+    const d=new Date(today);d.setDate(today.getDate()-i);
+    days.push(d.toISOString().slice(0,10));
+  }
+  const vals=days.map(d=>S.spending.filter(s=>s.date===d).reduce((a,s)=>a+s.amount,0));
+  const weekBudget=getEffectiveWeeklyBudget();
+  drawBarChart(canvas,vals,days.map(d=>d.slice(5)),"var(--rub)",weekBudget/7);
+}
+
+// ═══════════════ HEALTH ═══════════════
+function renderHealth(){
+  let html=`<div class="sub-tabs">
+    <button class="sub-tab ${healthSub==="weight"?"active":""}" onclick="setHealthSub('weight')">⚖️ Вес</button>
+    <button class="sub-tab ${healthSub==="calories"?"active":""}" onclick="setHealthSub('calories')">🍽 Калории</button>
+    <button class="sub-tab ${healthSub==="workout"?"active":""}" onclick="setHealthSub('workout')">💪 Тренировки</button>
+  </div>`;
+  if(healthSub==="weight")html+=renderWeight();
+  else if(healthSub==="calories")html+=renderCalories();
+  else html+=renderWorkouts();
+  return html;
+}
+function setHealthSub(s){healthSub=s;render();}
+
+function renderWeight(){
+  const logs=S.weightLog;const last=logs[logs.length-1];const prev=logs[logs.length-2];
+  const today=todayStr();const todayLog=logs.find(l=>l.date===today);
+  let diff=null;if(last&&prev)diff=(last.weight-prev.weight).toFixed(1);
+  let html="";
+  if(last){
+    const dc=diff===null?"":+diff>0?"pos":+diff<0?"neg":"";
+    html+=`<div class="weight-hero">
+      <div class="weight-big" style="color:var(--text)">${last.weight}<span class="weight-unit"> кг</span></div>
+      ${diff!==null?`<div class="weight-diff ${dc}">${+diff>0?"+":""}${diff} кг от прошлого</div>`:""}
+    </div>`;
+  }else{
+    html+=`<div style="text-align:center;padding:14px 0;color:var(--muted);font-size:12px">Добавь первую запись</div>`;
+  }
+  if(S.weightGoal&&last){
+    const start=logs[0].weight;const goal=S.weightGoal;const cur=last.weight;
+    const total=Math.abs(start-goal);const done=Math.abs(start-cur);
+    const pct=Math.min(100,Math.round((done/total)*100));
+    const bar=cur<=goal?"var(--green)":"var(--orange)";
+    html+=`<div class="goal-row"><span>Старт: ${start} кг</span><span>Цель: ${goal} кг</span></div>
+      <div class="goal-bar-bg"><div class="goal-bar-fill" style="width:${pct}%;background:${bar}"></div></div>`;
+  }
+  if(logs.length>=2)html+=`<div class="chart-wrap"><canvas id="weightChart"></canvas></div><div class="chart-label">динамика веса</div>`;
+  html+=`<div class="card">
+    <div class="section-label">${todayLog?"Обновить":"Записать вес"}</div>
+    <div class="input-row">
+      <input type="number" id="weight-input" step="0.1" min="30" max="300" placeholder="${todayLog?todayLog.weight:"кг"}" style="flex:1"/>
+      <button class="btn-small" onclick="addWeight()">Сохранить</button>
+    </div>
+    <div class="input-label" style="margin-top:6px">Цель по весу</div>
+    <div class="input-row">
+      <input type="number" id="goal-w-input" step="0.1" min="30" max="300" placeholder="${S.weightGoal||"кг"}" style="flex:1"/>
+      <button class="btn-small" onclick="setWeightGoal()">Сохранить</button>
+    </div>
+  </div>`;
+  if(logs.length>0){
+    html+=`<div class="section-label">История</div>`;
+    [...logs].reverse().slice(0,15).forEach(l=>{
+      html+=`<div class="hist-card" style="cursor:default"><div class="hist-date">${l.date}</div><span style="font-size:17px;font-weight:800">${l.weight} кг</span></div>`;
+    });
+  }
+  return html;
+}
+function addWeight(){
+  const val=parseFloat(document.getElementById("weight-input")?.value);
+  if(!val||val<30||val>300){toast("Введи корректный вес","err");return;}
+  const today=todayStr();const idx=S.weightLog.findIndex(l=>l.date===today);
+  if(idx>=0)S.weightLog[idx].weight=val;else S.weightLog.push({date:today,weight:val});
+  S.weightLog.sort((a,b)=>a.date.localeCompare(b.date));
+  saveState();render();toast("Вес: "+val+" кг");
+}
+function setWeightGoal(){
+  const val=parseFloat(document.getElementById("goal-w-input")?.value);
+  if(!val||val<30||val>300){toast("Введи корректную цель","err");return;}
+  S.weightGoal=val;saveState();render();toast("Цель: "+val+" кг");
+}
+function drawWeightChart(){
+  const canvas=document.getElementById("weightChart");if(!canvas)return;
+  const data=S.weightLog.slice(-20);
+  drawLineChart(canvas,data.map(d=>d.weight),data.map(d=>d.date.slice(5)),S.weightGoal);
+}
+
+function renderCalories(){
+  const today=todayStr();
+  const todayCal=S.calorieLog.find(l=>l.date===today);
+  const cur=todayCal?.calories||0;const goal=S.calorieGoal||2000;
+  const pct=Math.min(100,Math.round((cur/goal)*100));
+  const barColor=cur>goal?"var(--red)":cur>goal*.85?"var(--orange)":"var(--green)";
+  const isFreeDay=S.freeFoodDays?.includes(today);
+  let html="";
+  if(isFreeDay)html+=`<div class="card green" style="margin-bottom:10px"><span class="food-badge free">🍕 День без контроля</span><div style="font-size:10px;color:var(--muted)">Можно не считать сегодня</div></div>`;
+  html+=`<div class="card" style="margin-bottom:10px">
+    <div style="text-align:center;padding:6px 0">
+      <div style="font-size:38px;font-weight:800;color:${barColor}">${cur}</div>
+      <div style="font-size:11px;color:var(--muted)">из ${goal} ккал</div>
+      <div class="progress-bg" style="margin-top:9px"><div class="progress-fill" style="width:${pct}%;background:${barColor}"></div></div>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:10px">
+    <div class="section-label">Записать калории</div>
+    <div class="input-row">
+      <input type="number" id="cal-input" min="0" max="9999" placeholder="${todayCal?todayCal.calories:"ккал"}" style="flex:1"/>
+      <button class="btn-small" onclick="saveCal()">Сохранить</button>
+    </div>
+    <div class="input-label" style="margin-top:4px">Цель (ккал/день)</div>
+    <div class="input-row">
+      <input type="number" id="cal-goal-input" min="500" max="9999" placeholder="${S.calorieGoal}" style="flex:1"/>
+      <button class="btn-small" onclick="setCalGoal()">Сохранить</button>
+    </div>
+  </div>`;
+  if(S.calorieLog.length>=2)html+=`<div class="chart-wrap"><canvas id="calChart"></canvas></div><div class="chart-label">калории по дням</div>`;
+  if(S.calorieLog.length>0){
+    html+=`<div class="section-label" style="margin-top:10px">История</div>`;
+    [...S.calorieLog].reverse().slice(0,15).forEach(l=>{
+      const over=l.calories>goal;
+      html+=`<div class="hist-card" style="cursor:default">
+        <div class="hist-date">${l.date}</div>
+        <span style="font-size:16px;font-weight:800;color:${over?"var(--red)":"var(--green)"}">${l.calories} ккал</span>
+        <span style="font-size:10px;color:${over?"var(--red)":"var(--green)"};margin-left:8px">${over?"+":"−"}${Math.abs(l.calories-goal)} от цели</span>
+      </div>`;
+    });
+  }
+  return html;
+}
+function saveCal(){
+  const val=parseInt(document.getElementById("cal-input")?.value);
+  if(!val||val<0){toast("Введи калории","err");return;}
+  const today=todayStr();const idx=S.calorieLog.findIndex(l=>l.date===today);
+  if(idx>=0)S.calorieLog[idx].calories=val;else S.calorieLog.push({date:today,calories:val});
+  S.calorieLog.sort((a,b)=>a.date.localeCompare(b.date));
+  saveState();render();toast("Калории: "+val+" ккал");
+}
+function setCalGoal(){
+  const val=parseInt(document.getElementById("cal-goal-input")?.value);
+  if(!val||val<500){toast("Введи корректную цель","err");return;}
+  S.calorieGoal=val;saveState();render();toast("Цель: "+val+" ккал");
+}
+function drawCalChart(){
+  const canvas=document.getElementById("calChart");if(!canvas)return;
+  const data=S.calorieLog.slice(-14);
+  drawBarChart(canvas,data.map(d=>d.calories),data.map(d=>d.date.slice(5)),"var(--green)",S.calorieGoal||2000);
+}
+
+function renderWorkouts(){
+  const today=todayStr();
+  const todayW=S.workoutLog.find(w=>w.date===today);
+  if(tmpExercises.length===0&&todayW)tmpExercises=JSON.parse(JSON.stringify(todayW.exercises||[]));
+  let exRows=tmpExercises.map((e,i)=>`
+    <div class="exercise-row">
+      <input type="text" value="${esc(e.name)}" placeholder="Упражнение" oninput="tmpExercises[${i}].name=this.value" style="flex:2;font-size:13px;padding:9px 11px"/>
+      <input type="number" value="${e.value}" placeholder="0" oninput="tmpExercises[${i}].value=+this.value" style="flex:1;min-width:0;font-size:13px;padding:9px 8px"/>
+      <select onchange="tmpExercises[${i}].unit=this.value" style="flex:1;min-width:0;font-size:12px;padding:9px 6px">
+        ${UNITS.map(u=>`<option ${e.unit===u?"selected":""}>${u}</option>`).join("")}
+      </select>
+      <button class="exercise-del" onclick="removeExercise(${i})">✕</button>
+    </div>`).join("");
+  let html=`<div class="card" style="margin-bottom:12px">
+    <div class="section-label">Тренировка сегодня</div>
+    <div id="exercise-list">${exRows||'<div style="color:var(--muted);font-size:12px;margin-bottom:10px">Добавь упражнения</div>'}</div>
+    <button class="btn-outline" style="width:100%;margin-bottom:9px" onclick="addExercise()">+ Добавить упражнение</button>
+    <button class="btn-small" onclick="saveWorkout()">Сохранить тренировку</button>
+  </div>`;
+  if(S.workoutLog.length>0){
+    html+=`<div class="section-label">История</div>`;
+    [...S.workoutLog].reverse().forEach(w=>{
+      html+=`<div class="workout-entry">
+        <div class="workout-date-lbl">${w.date}</div>
+        ${(w.exercises||[]).map(e=>`<div class="exercise-item">
+          <span class="exercise-item-name">${e.name||"—"}</span>
+          <span class="exercise-item-val">${e.value} ${e.unit}</span>
+        </div>`).join("")}
+      </div>`;
+    });
+  }
+  return html;
+}
+function addExercise(){tmpExercises.push({name:"",value:0,unit:"шт"});render();}
+function removeExercise(i){tmpExercises.splice(i,1);render();}
+function saveWorkout(){
+  const exs=tmpExercises.filter(e=>e.name.trim());
+  if(!exs.length){toast("Добавь хотя бы одно упражнение","err");return;}
+  const today=todayStr();const idx=S.workoutLog.findIndex(w=>w.date===today);
+  if(idx>=0)S.workoutLog[idx]={date:today,exercises:exs};
+  else S.workoutLog.push({date:today,exercises:exs});
+  S.workoutLog.sort((a,b)=>a.date.localeCompare(b.date));
+  tmpExercises=[];saveState();render();toast("Тренировка сохранена!");
+}
+
+// ═══════════════ STATS ═══════════════
+function renderStats(){
+  const h=S.history;
+  if(h.length===0)return`<div class="empty"><div class="empty-icon">📊</div><p class="empty-text">Статистика появится после первого дня</p></div>`;
+  const totalDone=h.reduce((s,d)=>s+d.done,0);
+  const totalMissed=h.reduce((s,d)=>s+d.missed,0);
+  const avgPts=(h.reduce((s,d)=>s+d.earned,0)/h.length).toFixed(1);
+  const bestStreak=h.reduce((m,d)=>Math.max(m,d.streak),0);
+  let html=`<div class="stat-grid">
+    <div class="stat-box"><div class="stat-box-val">${totalDone}</div><div class="stat-box-lbl">выполнено задач</div></div>
+    <div class="stat-box"><div class="stat-box-val">${totalMissed}</div><div class="stat-box-lbl">пропущено</div></div>
+    <div class="stat-box"><div class="stat-box-val">${avgPts}</div><div class="stat-box-lbl">очков в среднем</div></div>
+    <div class="stat-box"><div class="stat-box-val">🔥${bestStreak}</div><div class="stat-box-lbl">лучшая серия</div></div>
+  </div>`;
+  if(h.length>=2){
+    html+=`<div class="section-label">Очки по дням</div><div class="chart-wrap"><canvas id="statsChart"></canvas></div>`;
+  }
+  html+=`<div class="section-label" style="margin-top:12px">Активность (70 дней)</div><div class="heatmap" id="heatmap"></div>`;
+  const taskCount={};
+  h.forEach(d=>(d.tasks||[]).forEach(t=>{if(t.done)taskCount[t.name]=(taskCount[t.name]||0)+1;}));
+  const sorted=Object.entries(taskCount).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  if(sorted.length>0){
+    html+=`<div class="section-label" style="margin-top:12px">Топ задач</div>`;
+    sorted.forEach(([name,cnt])=>{
+      const max=sorted[0][1];
+      html+=`<div style="margin-bottom:7px">
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px"><span>${name}</span><span style="color:var(--gold)">${cnt}×</span></div>
+        <div class="progress-bg"><div class="progress-fill" style="width:${(cnt/max)*100}%;background:var(--accent)"></div></div>
+      </div>`;
+    });
+  }
+  return html;
+}
+function drawStatsChart(){
+  const canvas=document.getElementById("statsChart");if(!canvas)return;
+  const data=S.history.slice(-20);
+  drawBarChart(canvas,data.map(d=>d.earned),data.map(d=>d.date.slice(5)),"var(--accent)");
+  const hm=document.getElementById("heatmap");if(!hm)return;
+  const dateMap={};S.history.forEach(d=>dateMap[d.date]=d.done);
+  const cells=[];
+  for(let i=69;i>=0;i--){
+    const d=new Date(Date.now()-i*86400000).toISOString().slice(0,10);
+    const v=dateMap[d]||0;
+    const lvl=v===0?"":v<=1?"l1":v<=2?"l2":v<=3?"l3":"l4";
+    cells.push(`<div class="hm-cell ${lvl}" title="${d}: ${v}"></div>`);
+  }
+  hm.innerHTML=cells.join("");
+}
+
+// ═══════════════ DIARY (in log now, but still standalone entry point) ═══════════════
+// Diary is accessed via Journal tab. Standalone entry via modal from today screen removed.
+// Quick diary entry button on today tab could be added.
+
+// ═══════════════ REWARDS ═══════════════
+function renderRewards(){
+  let html=`<p style="font-size:11px;color:var(--muted);margin-bottom:12px">Очков: <b style="color:var(--gold)">${S.totalPoints.toFixed(1)}</b></p>`;
+  S.rewards.forEach(r=>{
+    const can=S.totalPoints>=r.cost;
+    html+=`<div class="reward-card ${can?"":"locked"}">
+      <div class="reward-cost"><span class="reward-cost-num">${r.cost}</span><span class="reward-cost-lbl">очков</span></div>
+      <div class="reward-body"><div class="reward-label">${r.label}</div><div class="reward-desc">${r.desc}</div></div>
+      <button class="btn-small ${can?"":"locked"}" onclick="redeem('${r.id}')" ${can?"":"disabled"}>${can?"Забрать":"◉"}</button>
+    </div>`;
+  });
+  html+=`<button class="btn-outline" style="width:100%;margin-top:6px" onclick="openAddReward()">+ Добавить награду</button>`;
+  return html;
+}
+
+function redeem(id){
+  const r=S.rewards.find(x=>x.id===id);
+  if(!r||S.totalPoints<r.cost){toast("Недостаточно очков","err");return;}
+  S.totalPoints-=r.cost;
+  // Special rewards
+  if(id==="r8"){S.weeklyBudgetBonus=(S.weeklyBudgetBonus||0)+2000;toast("💰 +2000 ₽ к недельному лимиту!");}
+  else if(id==="r9"){S.monthlyBudget=(S.monthlyBudget||BASE_MONTHLY)+5000;toast("💰 +5000 ₽ к месячному бюджету!");}
+  else if(id==="r5"){
+    if(!S.limitedSweetDays)S.limitedSweetDays=[];
+    S.limitedSweetDays.push(todayStr());
+    toast("🍫 День ограниченного сладкого активирован!");
+  }else if(id==="r6"){
+    if(!S.freeFoodDays)S.freeFoodDays=[];
+    S.freeFoodDays.push(todayStr());
+    toast("🍕 День без контроля калорий активирован!");
+  }else{toast(`◈ «${r.label}» активировано!`);}
+  saveState();render();
+}
+
+function openAddReward(){
+  showModal(`<button class="modal-close" onclick="closeModal()">×</button>
+    <div class="modal-title">Новая награда</div>
+    <div class="input-label">Название</div>
+    <input type="text" id="new-r-label" placeholder="Название награды" style="margin-bottom:9px"/>
+    <div class="input-label">Описание</div>
+    <input type="text" id="new-r-desc" placeholder="Описание" style="margin-bottom:9px"/>
+    <div class="input-label">Стоимость (очки)</div>
+    <input type="number" id="new-r-cost" placeholder="25" min="1" style="margin-bottom:13px"/>
+    <button class="btn-primary" onclick="saveNewReward()">Добавить</button>`);
+}
+function saveNewReward(){
+  const label=document.getElementById("new-r-label")?.value?.trim();
+  const desc=document.getElementById("new-r-desc")?.value?.trim()||"";
+  const cost=parseInt(document.getElementById("new-r-cost")?.value);
+  if(!label||!cost){toast("Заполни название и цену","err");return;}
+  S.rewards.push({id:"r"+Date.now(),cost,label,desc});
+  saveState();closeModal();render();toast("Награда добавлена!");
+}
+
+// ═══════════════ SETTINGS ═══════════════
+function openSettings(){renderSettingsModal();}
+
+function renderSettingsModal(){
+  let taskRows=S.tasks.map((t,i)=>`
+    <div class="task-edit-row">
+      <span class="task-edit-emoji">${t.emoji}</span>
+      <input class="task-edit-name" value="${t.name}" oninput="S.tasks[${i}].name=this.value"/>
+      <input class="task-edit-pts" type="number" step="0.5" min="0.5" max="5" value="${t.points}" oninput="S.tasks[${i}].points=+this.value"/>
+      <button class="task-edit-type" onclick="toggleTaskType(${i})">${t.type==="important"?"⚡":"🎉"}</button>
+      <button class="task-edit-del" onclick="deleteTask(${i})">✕</button>
+    </div>`).join("");
+  showModal(`
+    <button class="modal-close" onclick="closeSettingsModal()">×</button>
+    <div class="modal-title">Настройки</div>
+    <div class="settings-section">
+      <div class="section-label">Задачи</div>
+      <div class="input-row">
+        <span style="font-size:12px;color:var(--muted);flex:1">Кол-во задач в день</span>
+        <input type="number" min="1" max="15" value="${S.taskCount}" style="width:65px" oninput="S.taskCount=+this.value"/>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);cursor:pointer;margin-bottom:12px">
+        <input type="checkbox" ${S.allowRepeat?"checked":""} onchange="S.allowRepeat=this.checked" style="width:auto;padding:0;border:none;background:none"/>
+        Разрешить повторяющиеся задачи
+      </label>
+      <div id="task-edit-list">${taskRows}</div>
+      <button class="btn-outline" style="width:100%;margin-bottom:4px" onclick="openAddTask()">+ Новая задача</button>
+    </div>
+    <div class="settings-section">
+      <div class="section-label">Деньги</div>
+      <div class="input-row">
+        <span style="font-size:12px;color:var(--muted);flex:1">Месячный бюджет (₽)</span>
+        <input type="number" value="${S.monthlyBudget||BASE_MONTHLY}" style="width:90px" oninput="S.monthlyBudget=+this.value"/>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="section-label">Здоровье</div>
+      <div class="input-row">
+        <span style="font-size:12px;color:var(--muted);flex:1">Цель веса (кг)</span>
+        <input type="number" step="0.1" value="${S.weightGoal||""}" placeholder="—" style="width:75px" oninput="S.weightGoal=+this.value||null"/>
+      </div>
+      <div class="input-row">
+        <span style="font-size:12px;color:var(--muted);flex:1">Цель калорий</span>
+        <input type="number" value="${S.calorieGoal||2000}" style="width:75px" oninput="S.calorieGoal=+this.value"/>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="section-label">Данные</div>
+      <button class="btn-outline" style="width:100%;margin-bottom:8px" onclick="exportData()">📤 Экспорт данных</button>
+      <button class="btn-small danger" style="width:100%" onclick="confirmReset()">⚠️ Сбросить всё</button>
+    </div>
+    <button class="btn-primary" onclick="closeSettingsModal()">Сохранить</button>
+  `,true);
+}
+
+function closeSettingsModal(){saveState();closeModal();render();}
+function toggleTaskType(i){S.tasks[i].type=S.tasks[i].type==="important"?"fun":"important";renderSettingsModal();}
+function deleteTask(i){if(S.tasks.length<=3){toast("Минимум 3 задачи","warn");return;}S.tasks.splice(i,1);renderSettingsModal();}
+
+function openAddTask(){
+  showModal(`<button class="modal-close" onclick="renderSettingsModal()">×</button>
+    <div class="modal-title">Новая задача</div>
+    <div class="input-label">Эмодзи</div>
+    <input type="text" id="new-t-emoji" placeholder="🎯" maxlength="2" style="margin-bottom:9px"/>
+    <div class="input-label">Название</div>
+    <input type="text" id="new-t-name" placeholder="Название задачи" style="margin-bottom:9px"/>
+    <div class="input-label">Очки</div>
+    <input type="number" id="new-t-pts" step="0.5" min="0.5" max="5" placeholder="2" style="margin-bottom:9px"/>
+    <div class="input-label">Тип</div>
+    <select id="new-t-type" style="margin-bottom:13px">
+      <option value="important">⚡ Важная</option>
+      <option value="fun">🎉 Развлечение</option>
+    </select>
+    <button class="btn-primary" onclick="saveNewTask()">Добавить</button>`);
+}
+function saveNewTask(){
+  const emoji=document.getElementById("new-t-emoji")?.value||"📌";
+  const name=document.getElementById("new-t-name")?.value?.trim();
+  const pts=parseFloat(document.getElementById("new-t-pts")?.value)||1;
+  const type=document.getElementById("new-t-type")?.value||"important";
+  if(!name){toast("Введи название","err");return;}
+  const newId=Math.max(...S.tasks.map(t=>t.id),0)+1;
+  S.tasks.push({id:newId,name,points:pts,type,emoji});
+  renderSettingsModal();toast("Задача добавлена!");
+}
+
+function exportData(){
+  const text=JSON.stringify(S,null,2);
+  const blob=new Blob([text],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;a.download="dailyapp-"+todayStr()+".json";
+  a.click();URL.revokeObjectURL(url);toast("Экспортировано!");
+}
+function confirmReset(){
+  if(confirm("Удалить ВСЕ данные? Нельзя отменить."))
+  {localStorage.removeItem("dailyapp-v4");location.reload();}
+}
+
+// Also need diary entry — add a floating button when on log tab
+// Diary modal
+function openDiaryModal(date){
+  date=date||todayStr();
+  const existing=S.diaryLog.find(d=>d.date===date);
+  if(existing&&selectedMood===null)selectedMood=existing?.mood??null;
+  const moodsHtml=MOODS.map((m,i)=>`<button class="mood-btn ${selectedMood===i?"selected":""}" onclick="selectMood(${i})">${m}</button>`).join("");
+  showModal(`<button class="modal-close" onclick="closeModal()">×</button>
+    <div class="modal-title">Дневник · ${date}</div>
+    <div class="input-label">Намерение на день</div>
+    <input type="text" id="diary-intent" placeholder="Установка на день..." value="${existing?.intent||""}" style="margin-bottom:10px"/>
+    <div class="input-label">Настроение</div>
+    <div class="mood-row">${moodsHtml}</div>
+    <div class="input-label">Заметка</div>
+    <textarea id="diary-note" placeholder="Как прошёл день...">${existing?.note||""}</textarea>
+    <button class="btn-primary" style="margin-top:10px" onclick="saveDiary('${date}')">Сохранить</button>`);
+}
+function selectMood(i){selectedMood=i;const btns=document.querySelectorAll(".mood-btn");btns.forEach((b,j)=>b.classList.toggle("selected",j===i));}
+function saveDiary(date){
+  const note=document.getElementById("diary-note")?.value?.trim()||"";
+  const intent=document.getElementById("diary-intent")?.value?.trim()||"";
+  if(!note&&selectedMood===null&&!intent){toast("Заполни хотя бы одно поле","err");return;}
+  const entry={date,mood:selectedMood??null,note,intent};
+  const idx=S.diaryLog.findIndex(d=>d.date===date);
+  if(idx>=0)S.diaryLog[idx]=entry;else S.diaryLog.push(entry);
+  selectedMood=null;saveState();closeModal();render();toast("Дневник сохранён!");
+}
+
+// ═══════════════ MODAL ═══════════════
+function showModal(html,wide=false){
+  document.getElementById("modal-container").innerHTML=`
+    <div class="modal-overlay" onclick="handleOverlay(event)">
+      <div class="modal-box" style="${wide?"max-height:95dvh":""}">
+        ${html}
+      </div>
+    </div>`;
+}
+function handleOverlay(e){if(e.target.classList.contains("modal-overlay"))closeModal();}
+function closeModal(){document.getElementById("modal-container").innerHTML="";}
+
+// ═══════════════ CHARTS ═══════════════
+function drawLineChart(canvas,values,labels,goalLine){
+  const ctx=canvas.getContext("2d");
+  const dpr=window.devicePixelRatio||1;
+  const W=canvas.offsetWidth,H=canvas.offsetHeight;
+  canvas.width=W*dpr;canvas.height=H*dpr;ctx.scale(dpr,dpr);
+  const pad={t:14,r:8,b:24,l:36};
+  const cw=W-pad.l-pad.r,ch=H-pad.t-pad.b;
+  if(values.length<2)return;
+  const minV=Math.min(...values)-1,maxV=Math.max(...values)+1;
+  const xOf=i=>pad.l+(i/(values.length-1))*cw;
+  const yOf=v=>pad.t+((maxV-v)/(maxV-minV))*ch;
+  [0,.5,1].forEach(f=>{
+    const y=pad.t+f*ch;
+    ctx.strokeStyle="#242840";ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+cw,y);ctx.stroke();
+    ctx.fillStyle="#7a8099";ctx.font="9px Inter,sans-serif";ctx.textAlign="right";
+    ctx.fillText((maxV-f*(maxV-minV)).toFixed(1),pad.l-3,y+3);
+  });
+  if(goalLine&&goalLine>=minV&&goalLine<=maxV){
+    const gy=yOf(goalLine);
+    ctx.setLineDash([4,4]);ctx.strokeStyle="#4ecb8d";ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(pad.l,gy);ctx.lineTo(pad.l+cw,gy);ctx.stroke();
+    ctx.setLineDash([]);ctx.fillStyle="#4ecb8d";ctx.textAlign="left";ctx.font="9px Inter,sans-serif";
+    ctx.fillText("цель",pad.l+4,gy-3);
+  }
+  const grad=ctx.createLinearGradient(0,pad.t,0,pad.t+ch);
+  grad.addColorStop(0,"rgba(124,109,250,.3)");grad.addColorStop(1,"rgba(124,109,250,0)");
+  ctx.beginPath();
+  values.forEach((v,i)=>i===0?ctx.moveTo(xOf(i),yOf(v)):ctx.lineTo(xOf(i),yOf(v)));
+  ctx.lineTo(xOf(values.length-1),pad.t+ch);ctx.lineTo(xOf(0),pad.t+ch);ctx.closePath();
+  ctx.fillStyle=grad;ctx.fill();
+  ctx.beginPath();
+  values.forEach((v,i)=>i===0?ctx.moveTo(xOf(i),yOf(v)):ctx.lineTo(xOf(i),yOf(v)));
+  ctx.strokeStyle="#7c6dfa";ctx.lineWidth=2;ctx.lineJoin="round";ctx.stroke();
+  values.forEach((v,i)=>{
+    ctx.beginPath();ctx.arc(xOf(i),yOf(v),3,0,Math.PI*2);
+    ctx.fillStyle="#7c6dfa";ctx.fill();
+    ctx.strokeStyle="#0d0f14";ctx.lineWidth=1.5;ctx.stroke();
+    if(i===0||i===values.length-1||values.length<=7){
+      ctx.fillStyle="#7a8099";ctx.font="9px Inter,sans-serif";ctx.textAlign="center";
+      ctx.fillText(labels[i]||"",xOf(i),pad.t+ch+14);
+    }
+  });
+}
+
+function drawBarChart(canvas,values,labels,color,goalLine){
+  const ctx=canvas.getContext("2d");
+  const dpr=window.devicePixelRatio||1;
+  const W=canvas.offsetWidth,H=canvas.offsetHeight;
+  canvas.width=W*dpr;canvas.height=H*dpr;ctx.scale(dpr,dpr);
+  const pad={t:14,r:8,b:24,l:36};
+  const cw=W-pad.l-pad.r,ch=H-pad.t-pad.b;
+  if(!values.length)return;
+  const maxV=Math.max(...values,goalLine||0)*1.1||1;
+  const yOf=v=>pad.t+((maxV-v)/maxV)*ch;
+  const bw=Math.max(4,cw/values.length-3);
+  [0,.5,1].forEach(f=>{
+    const y=pad.t+f*ch;
+    ctx.strokeStyle="#242840";ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+cw,y);ctx.stroke();
+    ctx.fillStyle="#7a8099";ctx.font="9px Inter,sans-serif";ctx.textAlign="right";
+    ctx.fillText(Math.round(maxV*(1-f)),pad.l-3,y+3);
+  });
+  if(goalLine){
+    const gy=yOf(goalLine);
+    ctx.setLineDash([4,4]);ctx.strokeStyle="#4ecb8d";ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(pad.l,gy);ctx.lineTo(pad.l+cw,gy);ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  values.forEach((v,i)=>{
+    const x=pad.l+(i/values.length)*cw+(cw/values.length-bw)/2;
+    const barH=Math.max(2,(v/maxV)*ch);
+    ctx.fillStyle=goalLine&&v>goalLine?"var(--red)":color;
+    ctx.beginPath();
+    if(ctx.roundRect)ctx.roundRect(x,yOf(v),bw,barH,2);else ctx.rect(x,yOf(v),bw,barH);
+    ctx.fill();
+    if(i===0||i===values.length-1||values.length<=7){
+      ctx.fillStyle="#7a8099";ctx.font="9px Inter,sans-serif";ctx.textAlign="center";
+      ctx.fillText(labels[i]||"",x+bw/2,pad.t+ch+14);
+    }
+  });
+}
+
+// ═══════════════ INIT ═══════════════
+loadState();
+render();
+</script>
+</body>
+</html>
